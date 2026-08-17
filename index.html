@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Red Pen</title>
+<style>
+  :root {
+    --paper:   #E8EAEE;
+    --paper-2: #DEE1E7;
+    --ink:     #15181D;
+    --ink-mid: #565D68;
+    --ink-low: #8B929C;
+    --rule:    #C6CBD2;
+    --red:     #B3372C;
+    --green:   #2C6146;
+    --amber:   #8A6410;
+
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --serif: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .sheet {
+    max-width: 940px;
+    margin: 0 auto;
+    padding: 52px 28px 96px 28px;
+  }
+
+  /* ---- masthead ---- */
+
+  .mast {
+    border-bottom: 1px solid var(--ink);
+    padding-bottom: 18px;
+    margin-bottom: 34px;
+  }
+  .wordmark {
+    font-family: var(--serif);
+    font-size: clamp(38px, 6vw, 54px);
+    line-height: 1;
+    letter-spacing: -0.02em;
+    margin: 0;
+    font-weight: 400;
+  }
+  .wordmark em {
+    font-style: italic;
+    color: var(--red);
+  }
+  .standfirst {
+    margin: 12px 0 0 0;
+    max-width: 56ch;
+    color: var(--ink-mid);
+    font-size: 15px;
+  }
+
+  .label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-low);
+  }
+
+  /* ---- input ---- */
+
+  .intake { margin-bottom: 40px; }
+
+  .drop {
+    border: 1px dashed var(--rule);
+    background: var(--paper-2);
+    padding: 22px;
+    margin-top: 10px;
+    transition: border-color .12s linear, background .12s linear;
+  }
+  .drop.hot {
+    border-color: var(--red);
+    background: #E4DDDC;
+  }
+
+  textarea {
+    display: block;
+    width: 100%;
+    min-height: 148px;
+    resize: vertical;
+    border: 1px solid var(--rule);
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.6;
+    padding: 12px 14px;
+  }
+  textarea:focus-visible,
+  button:focus-visible,
+  .filebtn:focus-within {
+    outline: 2px solid var(--red);
+    outline-offset: 2px;
+  }
+
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    margin-top: 14px;
+  }
+
+  button.run {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    background: var(--ink);
+    color: var(--paper);
+    border: 1px solid var(--ink);
+    padding: 11px 20px;
+    cursor: pointer;
+  }
+  button.run:hover { background: var(--red); border-color: var(--red); }
+
+  .filebtn {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    border: 1px solid var(--ink);
+    padding: 11px 20px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+  }
+  .filebtn:hover { border-color: var(--red); color: var(--red); }
+  .filebtn input { display: none; }
+
+  .hint {
+    font-size: 13px;
+    color: var(--ink-low);
+  }
+
+  /* ---- report ---- */
+
+  .report { display: none; }
+  .report.shown { display: block; }
+
+  .verdict {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    flex-wrap: wrap;
+    border-top: 1px solid var(--ink);
+    border-bottom: 1px solid var(--rule);
+    padding: 20px 0;
+    margin-bottom: 4px;
+  }
+  .verdict .score {
+    font-family: var(--serif);
+    font-size: 42px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .verdict .score b { font-weight: 400; color: var(--red); }
+  .verdict .score b.clean { color: var(--green); }
+  .verdict .meta { font-size: 13.5px; color: var(--ink-mid); }
+
+  /* the margin rule: exam paper */
+  .checks {
+    border-left: 1px solid var(--red);
+    margin-left: 34px;
+    padding-left: 0;
+  }
+
+  .check {
+    display: grid;
+    grid-template-columns: 34px 1fr;
+    border-bottom: 1px solid var(--rule);
+  }
+  .check:last-child { border-bottom: none; }
+
+  .mark {
+    display: flex;
+    justify-content: center;
+    padding-top: 19px;
+    margin-left: -34px;
+    grid-column: 1;
+  }
+  .mark svg { display: block; width: 19px; height: 19px; overflow: visible; }
+  .mark .stroke {
+    fill: none;
+    stroke-width: 2.1;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .m-fail  .stroke { stroke: var(--red); }
+  .m-pass  .stroke { stroke: var(--green); }
+  .m-note  .stroke { stroke: var(--amber); }
+  .m-na    .stroke { stroke: var(--ink-low); }
+
+  .body { grid-column: 2; padding: 15px 0 17px 14px; }
+
+  .head {
+    display: flex;
+    gap: 12px;
+    align-items: baseline;
+    flex-wrap: wrap;
+  }
+  .num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-low);
+    letter-spacing: 0.1em;
+  }
+  .title { font-size: 15px; font-weight: 600; letter-spacing: -0.005em; }
+  .verdict-word {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border: 1px solid currentColor;
+  }
+  .v-fail { color: var(--red); }
+  .v-pass { color: var(--green); }
+  .v-note { color: var(--amber); }
+  .v-na   { color: var(--ink-low); }
+
+  .why {
+    margin: 7px 0 0 0;
+    color: var(--ink-mid);
+    font-size: 14px;
+    max-width: 68ch;
+  }
+
+  .findings { margin: 12px 0 0 0; padding: 0; list-style: none; }
+  .findings li {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    background: var(--paper-2);
+    border-left: 2px solid var(--rule);
+    padding: 7px 12px;
+    margin-bottom: 6px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .findings li.bad {
+    border-left-color: var(--red);
+    text-decoration: underline wavy var(--red);
+    text-underline-offset: 4px;
+    text-decoration-thickness: 1px;
+  }
+  .findings li .ln {
+    color: var(--ink-low);
+    text-decoration: none;
+    display: inline-block;
+    min-width: 4.5ch;
+  }
+
+  .foot {
+    margin-top: 46px;
+    padding-top: 18px;
+    border-top: 1px solid var(--rule);
+    font-size: 13.5px;
+    color: var(--ink-mid);
+    max-width: 68ch;
+  }
+  .foot code {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    background: var(--paper-2);
+    padding: 1px 5px;
+  }
+
+  @media (max-width: 560px) {
+    .sheet { padding: 34px 18px 70px 18px; }
+    .checks { margin-left: 26px; }
+    .check { grid-template-columns: 26px 1fr; }
+    .mark { margin-left: -26px; }
+    .body { padding-left: 10px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <header class="mast">
+    <h1 class="wordmark">Red <em>Pen</em></h1>
+    <p class="standfirst">Static audit for generated HTML. Paste a file, get the eight things models get wrong when nobody opens the output. Runs entirely in this tab. Nothing is uploaded.</p>
+  </header>
+
+  <section class="intake">
+    <span class="label">Input</span>
+    <div class="drop" id="drop">
+      <textarea id="src" spellcheck="false" placeholder="Paste a complete HTML file here, or drop one anywhere on this panel."></textarea>
+      <div class="controls">
+        <button class="run" id="run" type="button">Run audit</button>
+        <label class="filebtn">Choose file<input type="file" id="file" accept=".html,.htm,.txt"></label>
+        <span class="hint" id="hint">No file loaded</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="report" id="report" aria-live="polite">
+    <div class="verdict">
+      <div class="score" id="score"></div>
+      <div class="meta" id="meta"></div>
+    </div>
+    <div class="checks" id="checks"></div>
+  </section>
+
+  <footer class="foot">
+    <p>All checks are static text analysis, not execution. Two known blind spots: regular-expression literals containing quote characters can confuse the tokenizer, and a value can be wired to a variable that is itself hardcoded upstream. Treat a clean sheet as <em>nothing obvious</em>, not as <em>correct</em>.</p>
+    <p>This file passes its own audit. Open it and check.</p>
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var srcEl    = document.getElementById("src");
+  var runEl    = document.getElementById("run");
+  var fileEl   = document.getElementById("file");
+  var hintEl   = document.getElementById("hint");
+  var dropEl   = document.getElementById("drop");
+  var reportEl = document.getElementById("report");
+  var checksEl = document.getElementById("checks");
+  var scoreEl  = document.getElementById("score");
+  var metaEl   = document.getElementById("meta");
+
+  /* ---------------------------------------------------------------
+     Tokenizer. Walks JS once and produces a masked copy where string
+     contents and comment bodies are blanked, so structural regexes
+     cannot trip over them. Comments are collected separately.
+     --------------------------------------------------------------- */
+
+  function isRegexStart(masked) {
+    var j = masked.length - 1;
+    while (j >= 0 && /\s/.test(masked[j])) j--;
+    if (j < 0) return true;
+    var prev = masked[j];
+    if ("=(,:[!&|?{};+-*%~^<>".indexOf(prev) !== -1) return true;
+    var word = masked.slice(Math.max(0, j - 9), j + 1).match(/[A-Za-z_$]+$/);
+    if (word && /^(?:return|typeof|instanceof|in|of|new|delete|void|case|do|else|yield|await)$/.test(word[0])) return true;
+    return false;
+  }
+
+  function tokenize(js) {
+    var masked = "";
+    var comments = [];
+    var i = 0;
+    var n = js.length;
+    var buf = "";
+
+    while (i < n) {
+      var c = js[i];
+      var d = js[i + 1];
+
+      if (c === "/" && d === "/") {
+        buf = "";
+        while (i < n && js[i] !== "\n") { buf += js[i]; masked += " "; i++; }
+        comments.push(buf);
+        continue;
+      }
+      if (c === "/" && d === "*") {
+        buf = "";
+        while (i < n && !(js[i] === "*" && js[i + 1] === "/")) {
+          buf += js[i];
+          masked += js[i] === "\n" ? "\n" : " ";
+          i++;
+        }
+        masked += "  ";
+        i += 2;
+        comments.push(buf);
+        continue;
+      }
+      if (c === "'" || c === '"' || c === "`") {
+        var q = c;
+        masked += q;
+        i++;
+        while (i < n && js[i] !== q) {
+          if (js[i] === "\\") { masked += "  "; i += 2; continue; }
+          masked += js[i] === "\n" ? "\n" : " ";
+          i++;
+        }
+        masked += q;
+        i++;
+        continue;
+      }
+      if (c === "/" && isRegexStart(masked)) {
+        masked += "/";
+        i++;
+        var inClass = false;
+        while (i < n) {
+          var r = js[i];
+          if (r === "\\") { masked += "  "; i += 2; continue; }
+          if (r === "\n") break;
+          if (r === "[") inClass = true;
+          else if (r === "]") inClass = false;
+          else if (r === "/" && !inClass) break;
+          masked += " ";
+          i++;
+        }
+        masked += "/";
+        i++;
+        while (i < n && /[gimsuyd]/.test(js[i])) { masked += " "; i++; }
+        continue;
+      }
+      masked += c;
+      i++;
+    }
+    return { masked: masked, comments: comments };
+  }
+
+  function scriptBodies(html) {
+    var out = [];
+    var re = /<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi;
+    var m;
+    while ((m = re.exec(html)) !== null) {
+      if (!/\bsrc\s*=/i.test(m[1])) out.push(m[2]);
+    }
+    return out.join("\n;\n");
+  }
+
+  function styleBodies(html) {
+    var out = [];
+    var re = /<style\b[^>]*>([\s\S]*?)<\/style\s*>/gi;
+    var m;
+    while ((m = re.exec(html)) !== null) out.push(m[1]);
+    return out.join("\n");
+  }
+
+  function lineOf(text, index) {
+    var upto = text.slice(0, index);
+    return upto.split("\n").length;
+  }
+
+  function snip(s, max) {
+    s = s.replace(/\s+/g, " ").trim();
+    if (s.length > max) s = s.slice(0, max - 1) + "\u2026";
+    return s;
+  }
+
+  /* ---------------------------------------------------------------
+     Checks
+     --------------------------------------------------------------- */
+
+  function checkOffline(html) {
+    var hits = [];
+    var patterns = [
+      /\b(?:src|href)\s*=\s*["']?(https?:\/\/[^"'\s>]+)/gi,
+      /@import\s+(?:url\(\s*)?["']?(https?:\/\/[^"')\s]+)/gi,
+      /(?:fetch|importScripts)\s*\(\s*["'](https?:\/\/[^"']+)/gi,
+      /new\s+Worker\s*\(\s*["'](https?:\/\/[^"']+)/gi
+    ];
+    patterns.forEach(function (re) {
+      var m;
+      while ((m = re.exec(html)) !== null) {
+        if (/(?:www\.)?w3\.org/i.test(m[1])) continue;
+        hits.push({ line: lineOf(html, m.index), text: snip(m[0], 110), bad: true });
+      }
+    });
+    return {
+      status: hits.length ? "fail" : "pass",
+      why: hits.length
+        ? "This file reaches the network. It will not render correctly opened from disk with no connection."
+        : "No external stylesheets, scripts, fonts, workers or fetches. SVG namespace URIs are ignored because they are never requested.",
+      findings: hits
+    };
+  }
+
+  function checkHardcodedDisplay(js) {
+    var hits = [];
+    var re = /\.(textContent|innerText|innerHTML)\s*=\s*(['"])((?:[^'"\\]|\\.)*)\2/g;
+    var m;
+    while ((m = re.exec(js)) !== null) {
+      var lit = m[3];
+      if (!/\d/.test(lit) && lit.indexOf("%") === -1) continue;
+      if (lit.trim().length < 2) continue;
+      hits.push({ line: lineOf(js, m.index), text: snip(m[0], 110), bad: true });
+    }
+    return {
+      status: hits.length ? "fail" : "pass",
+      why: hits.length
+        ? "A number shown on screen is a literal, not a value read from the program. It displays the right figure right up until something changes."
+        : "Every numeric value written to the DOM comes from a variable or an expression.",
+      findings: hits
+    };
+  }
+
+  function checkEmptyBlocks(masked, js) {
+    var hits = [];
+    var re = /\{[\s]*\}/g;
+    var m;
+    while ((m = re.exec(masked)) !== null) {
+      var back = masked.slice(Math.max(0, m.index - 220), m.index);
+      if (!/(?:\bif\b|\belse\b|\bfor\b|\bwhile\b|\bcatch\b|\bswitch\b|\bfunction\b|=>)\s*(?:\([^]*\)\s*)?$/.test(back)) continue;
+      var kw = back.match(/\b(if|else|for|while|catch|switch|function)\b(?![^]*\b(?:if|else|for|while|catch|switch|function)\b)/);
+      var lead = back.slice(-120).split("\n").pop().trim();
+      hits.push({
+        line: lineOf(js, m.index),
+        text: snip((lead || (kw ? kw[1] : "block")) + " { }", 110),
+        bad: true
+      });
+    }
+    return {
+      status: hits.length ? "fail" : "pass",
+      why: hits.length
+        ? "A control block with an empty body. The code measures a condition and then does nothing about it, which reads as a feature and runs as decoration."
+        : "No empty conditionals, loops, catch blocks or function bodies.",
+      findings: hits
+    };
+  }
+
+  function checkAudio(js) {
+    var hasCtx = /\b(?:webkit)?AudioContext\b/.test(js);
+    if (!hasCtx) {
+      return { status: "na", why: "No WebAudio in this file.", findings: [] };
+    }
+    var gesture = /addEventListener\s*\(\s*["'](?:click|pointerdown|pointerup|mousedown|touchstart|touchend|keydown)["']/.test(js)
+      || /\bon(?:click|pointerdown|mousedown|touchstart|keydown)\s*=/.test(js);
+    var resumes = /\.resume\s*\(/.test(js);
+    var findings = [];
+    if (!gesture) findings.push({ text: "No user-gesture listener found anywhere in the file.", bad: true });
+    if (!resumes) findings.push({ text: "No call to AudioContext.resume().", bad: true });
+    return {
+      status: findings.length ? "fail" : "pass",
+      why: findings.length
+        ? "Browsers start an AudioContext suspended until a real user gesture. Without a gesture handler and a resume call, the audio is silent on load and stays silent."
+        : "Audio is gated behind a user gesture and the context is resumed. Correct under current autoplay policy.",
+      findings: findings
+    };
+  }
+
+  function checkDeterminism(js) {
+    var hits = [];
+    var re = /Math\.random\s*\(/g;
+    var m;
+    while ((m = re.exec(js)) !== null) {
+      hits.push({ line: lineOf(js, m.index), text: "Math.random()", bad: false });
+    }
+    if (!hits.length) {
+      return { status: "pass", why: "Deterministic. The same layout renders on every reload, so a screenshot is reproducible.", findings: [] };
+    }
+    var count = hits.length;
+    return {
+      status: "note",
+      why: "Seeded from Math.random in " + count + " place" + (count === 1 ? "" : "s") + ". Output differs on every reload, so nobody can reproduce a specific frame. Fine for ambience, a problem for a demo you want to compare against.",
+      findings: hits.slice(0, 6)
+    };
+  }
+
+  function checkDebugLeftovers(masked, js, comments) {
+    var hits = [];
+    var re = /\b(?:console\s*\.\s*(?:log|debug|warn|error|table|trace)|debugger)\b/g;
+    var m;
+    while ((m = re.exec(masked)) !== null) {
+      hits.push({ line: lineOf(js, m.index), text: snip(m[0], 80), bad: true });
+    }
+    comments.forEach(function (c) {
+      if (/\b(?:TODO|FIXME|XXX|HACK)\b/i.test(c)) hits.push({ text: snip(c, 110), bad: true });
+    });
+    return {
+      status: hits.length ? "note" : "pass",
+      why: hits.length
+        ? "Debug output or unfinished-work markers left in the shipped file."
+        : "No console calls, debugger statements or TODO markers.",
+      findings: hits.slice(0, 10)
+    };
+  }
+
+  function checkReducedMotion(html, css, js) {
+    var animates = /requestAnimationFrame\s*\(/.test(js)
+      || /@keyframes/i.test(css)
+      || /\b(?:transition|animation)\s*:/i.test(css);
+    if (!animates) {
+      return { status: "na", why: "Nothing animates in this file.", findings: [] };
+    }
+    var respects = /prefers-reduced-motion/i.test(html);
+    return {
+      status: respects ? "pass" : "fail",
+      why: respects
+        ? "Motion is gated on prefers-reduced-motion."
+        : "Continuous animation with no prefers-reduced-motion branch. For a reader with vestibular sensitivity this page has no off switch.",
+      findings: []
+    };
+  }
+
+  function checkDocumentBasics(html) {
+    var hits = [];
+    var t = html.match(/<title\b[^>]*>([\s\S]*?)<\/title\s*>/i);
+    if (!t) hits.push({ text: "No <title> element.", bad: true });
+    else if (!t[1].trim()) hits.push({ text: "<title> is empty. The tab shows the file path.", bad: true });
+
+    var lang = html.match(/<html\b([^>]*)>/i);
+    if (lang) {
+      var la = lang[1].match(/\blang\s*=\s*["']([^"']*)["']/i);
+      if (!la) hits.push({ text: "<html> has no lang attribute.", bad: true });
+      else if (!la[1].trim()) hits.push({ text: 'lang="" is set to an empty string.', bad: true });
+    }
+
+    var bre = /<button\b([^>]*)>([\s\S]*?)<\/button\s*>/gi;
+    var b;
+    while ((b = bre.exec(html)) !== null) {
+      var textInside = b[2].replace(/<[^>]*>/g, "").trim();
+      var labelled = /\baria-label\s*=\s*["'][^"']+["']/i.test(b[1])
+        || /\baria-labelledby\s*=/i.test(b[1])
+        || /\btitle\s*=\s*["'][^"']+["']/i.test(b[1]);
+      if (!textInside && !labelled) {
+        hits.push({ line: lineOf(html, b.index), text: "Icon-only <button> with no accessible name.", bad: true });
+      }
+    }
+    return {
+      status: hits.length ? "fail" : "pass",
+      why: hits.length
+        ? "Document-level details a model skips when told to keep the output minimal."
+        : "Title, language and control labels are all present.",
+      findings: hits
+    };
+  }
+
+  /* ---------------------------------------------------------------
+     Render
+     --------------------------------------------------------------- */
+
+  var MARKS = {
+    fail: "M3 3 L16 16 M16 3 L3 16",
+    pass: "M2.5 10 L7 15.5 L17 3",
+    note: "M9.5 2.5 L9.5 12 M9.5 15.5 L9.5 17",
+    na:   "M3 9.5 L16 9.5"
+  };
+  var WORDS = { fail: "Fail", pass: "Pass", note: "Note", na: "N/A" };
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+
+  function renderCheck(index, title, result) {
+    var row = el("div", "check");
+
+    var mark = el("div", "mark m-" + result.status);
+    var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 19 19");
+    svg.setAttribute("aria-hidden", "true");
+    var path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("class", "stroke");
+    path.setAttribute("d", MARKS[result.status]);
+    svg.appendChild(path);
+    mark.appendChild(svg);
+
+    var body = el("div", "body");
+    var head = el("div", "head");
+    head.appendChild(el("span", "num", String(index).padStart(2, "0")));
+    head.appendChild(el("span", "title", title));
+    head.appendChild(el("span", "verdict-word v-" + result.status, WORDS[result.status]));
+    body.appendChild(head);
+    body.appendChild(el("p", "why", result.why));
+
+    if (result.findings && result.findings.length) {
+      var ul = el("ul", "findings");
+      result.findings.forEach(function (f) {
+        var li = el("li", f.bad ? "bad" : null);
+        if (f.line) li.appendChild(el("span", "ln", f.line + ":"));
+        li.appendChild(document.createTextNode(f.text));
+        ul.appendChild(li);
+      });
+      body.appendChild(ul);
+    }
+
+    row.appendChild(mark);
+    row.appendChild(body);
+    return row;
+  }
+
+  function audit(html) {
+    var js = scriptBodies(html);
+    var css = styleBodies(html);
+    var tok = tokenize(js);
+
+    var results = [
+      ["Offline integrity",        checkOffline(html)],
+      ["Hardcoded display values", checkHardcodedDisplay(js)],
+      ["Empty control blocks",     checkEmptyBlocks(tok.masked, js)],
+      ["Autoplay-safe audio",      checkAudio(js)],
+      ["Reproducible output",      checkDeterminism(tok.masked)],
+      ["Debug leftovers",          checkDebugLeftovers(tok.masked, js, tok.comments)],
+      ["Reduced-motion respect",   checkReducedMotion(html, css, js)],
+      ["Document basics",          checkDocumentBasics(html)]
+    ];
+
+    checksEl.textContent = "";
+    var applicable = 0, passed = 0, failed = 0, noted = 0;
+
+    results.forEach(function (r, i) {
+      var st = r[1].status;
+      if (st !== "na") applicable++;
+      if (st === "pass") passed++;
+      if (st === "fail") failed++;
+      if (st === "note") noted++;
+      checksEl.appendChild(renderCheck(i + 1, r[0], r[1]));
+    });
+
+    scoreEl.textContent = "";
+    var b = el("b", failed ? null : "clean", String(passed));
+    scoreEl.appendChild(b);
+    scoreEl.appendChild(document.createTextNode(" of " + applicable + " clean"));
+
+    var parts = [];
+    parts.push(failed + (failed === 1 ? " failure" : " failures"));
+    if (noted) parts.push(noted + (noted === 1 ? " note" : " notes"));
+    parts.push((8 - applicable) + " not applicable");
+    parts.push(html.split("\n").length + " lines read");
+    metaEl.textContent = parts.join("  \u00B7  ");
+
+    reportEl.classList.add("shown");
+    reportEl.scrollIntoView({ block: "start" });
+  }
+
+  function load(text, name) {
+    srcEl.value = text;
+    hintEl.textContent = name ? name + " loaded" : "Pasted source";
+    audit(text);
+  }
+
+  runEl.addEventListener("click", function () {
+    var v = srcEl.value.trim();
+    if (!v) { hintEl.textContent = "Nothing to audit. Paste a file first."; return; }
+    hintEl.textContent = "Pasted source";
+    audit(v);
+  });
+
+  fileEl.addEventListener("change", function () {
+    var f = fileEl.files && fileEl.files[0];
+    if (!f) return;
+    var reader = new FileReader();
+    reader.onload = function () { load(String(reader.result), f.name); };
+    reader.readAsText(f);
+  });
+
+  ["dragenter", "dragover"].forEach(function (evt) {
+    dropEl.addEventListener(evt, function (e) {
+      e.preventDefault();
+      dropEl.classList.add("hot");
+    });
+  });
+  ["dragleave", "drop"].forEach(function (evt) {
+    dropEl.addEventListener(evt, function (e) {
+      e.preventDefault();
+      dropEl.classList.remove("hot");
+    });
+  });
+  dropEl.addEventListener("drop", function (e) {
+    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (!f) return;
+    var reader = new FileReader();
+    reader.onload = function () { load(String(reader.result), f.name); };
+    reader.readAsText(f);
+  });
+})();
+</script>
+</body>
+</html>
