@@ -1,0 +1,12 @@
+You are a senior JavaScript engineer. Repair the following single-file Canvas physics simulation.
+
+Three known bugs:
+1. Dragging should attract particles toward the pointer, but currently repels them.
+2. Pause must freeze every particle and simulation timer, with no position jump on resume.
+3. Reset must restore exactly 240 particles, not append more.
+
+Preserve the entire visual design, animations, controls, responsiveness and styling. Make the smallest necessary changes. No external libraries or assets.
+
+Return the COMPLETE corrected HTML file with no omitted sections, placeholders or explanations. It must run when saved locally as an .html file.
+
+Here is the original HTML:
